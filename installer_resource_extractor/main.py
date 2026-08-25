@@ -8,16 +8,23 @@ from pathlib import Path
 def usage() -> None:
     print(
         "Usage: ResourceExtractor.command "
-        "<Install macOS.app> <output folder>"
+        "<Install macOS.app> <output folder> -v[erbose]"
     )
 
 
 def startup() -> None:
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-        handlers=[logging.StreamHandler(sys.stdout)],
-    )
+    if len(sys.argv) > 3 and sys.argv[3] == "-v":
+        logging.basicConfig(
+            level=logging.DEBUG,
+            format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+            handlers=[logging.StreamHandler(sys.stdout)],
+        )
+    else:
+        logging.basicConfig(
+                    level=logging.INFO,
+                    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+                    handlers=[logging.StreamHandler(sys.stdout)],
+                )
     logger = logging.getLogger(__name__)
 
     if len(sys.argv) < 3 or sys.argv[1] in {"--help", "-h"}:

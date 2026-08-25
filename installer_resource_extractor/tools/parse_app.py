@@ -38,16 +38,16 @@ class parse_app:
         self.extract_zip()
         
     def extract_zip(self):
-        self.logger.info("Mounting SharedSupport.dmg...")
+        self.logger.debug("Mounting SharedSupport.dmg...")
         subprocess.run(["/usr/bin/hdiutil", "attach", str(self.app_path / Path("Contents/SharedSupport/SharedSupport.dmg"))], check=True)
         assets_zip = Path(subprocess.run(["/usr/bin/find", "/Volumes/Shared Support/com_apple_MobileAsset_MacSoftwareUpdate", "-type", "f", "-name", "*.zip"], capture_output=True, text=True).stdout.strip())
-        self.logger.info(f"Unziping macOS installer assets from {assets_zip} ...")
+        self.logger.debug(f"Unziping macOS installer assets from {assets_zip} ...")
         subprocess.run(["/usr/bin/unzip", str(assets_zip), "-d", str(self.output_path / "Assets")], check=True)
-        self.logger.info("Unmounting SharedSupport.dmg...")
+        self.logger.debug("Unmounting SharedSupport.dmg...")
         subprocess.run(["/usr/bin/hdiutil", "detach", "/Volumes/Shared Support"], check=True)
 
     def remove_extra(self):
-        self.logger.info("Removing extra payloads...")
+        self.logger.debug("Removing extra payloads...")
         unneededPayloads = subprocess.run(["/usr/bin/find", str(self.output_path / "Assets" / "AssetData" / "payloadv2"), "-type", "f", "-name", "*.ecc"], capture_output=True, text=True).stdout.strip().splitlines()
         unneededPayloads.extend(subprocess.run(["/usr/bin/find", str(self.output_path / "Assets" / "AssetData" / "payloadv2"), "-type", "f", "-name", "*_payload"], capture_output=True, text=True).stdout.strip().splitlines())
         unneededPayloads.extend(subprocess.run(["/usr/bin/find", str(self.output_path / "Assets" / "AssetData" / "payloadv2"), "-type", "f", "-name", "*.txt"], capture_output=True, text=True).stdout.strip().splitlines())
