@@ -217,7 +217,8 @@ class ExtractAssets:
             raise RuntimeError(
                 "The following payloads failed: " + ", ".join(failures)
             )
-
+        # cleanup the Assets dir
+        subprocess.run(["/bin/rm", "-rf", str(self.output_path / "Assets")])
         self.logger.info("All %d payloads processed successfully.", len(payloads))
 
 
