@@ -27,7 +27,7 @@ All installers Big Sur+ are supported, here is a list of tested ones. (if you ha
 
 ## Supported macOSes
 
-This project has curreently only been tested to run on macOS Sonoma. It most likely will work on way more. Please report [here](https://github.com/gandolf243/Installer-Resource-Extractor/discussions/2) if it works on a macOS not labeled/checked. This project **will** not work on macOS Sierra (10.12) or ealier, due to `YAA1` (one of the compression formats that apple uses) being introduced in macOS High Sierra (10.13).
+This project has curreently only been tested to run on macOS Sonoma. It most likely will work on way more. Please report [here](https://github.com/gandolf243/Installer-Resource-Extractor/discussions/3) if it works on a macOS not labeled/checked. This project **will** not work on macOS Sierra (10.12) or ealier, due to `YAA1` (one of the compression formats that apple uses) being introduced in macOS High Sierra (10.13).
 
 - [ ] Big Sur 11
 
