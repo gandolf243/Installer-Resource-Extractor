@@ -14,7 +14,7 @@ class parse_app:
         self.logger.info(f"Parsing installer app at {app_path} and extracting resources to {output_path}")
         try:
             if not ((app_path / Path("Contents/Resources/createinstallmedia")).exists() and (app_path / Path("Contents/SharedSupport/SharedSupport.dmg")).exists()):
-                self.logger.error(f"{app_path} doesn't appear to be a valid macOS installer")
+                self.logger.error(f"{app_path} doesn't appear to be a valid macOS installer!")
                 sys.exit(1)
             if not (app_path / Path("Contents/Info.plist")).exists():
                 self.logger.error(f"{app_path} is missing `Info.plist`")

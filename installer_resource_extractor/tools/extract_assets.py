@@ -1,336 +1,225 @@
+"""PBZX -> Apple Archive payload extraction."""
+
+from __future__ import annotations
+
 import lzma
-import os
+import logging
 import shutil
-import struct
 import subprocess
-import sys
 import tempfile
 from pathlib import Path
 
 
-class extractAssets:
+class ExtractAssets:
+    """
+    Extract every PBZX payload in a payloadv2 directory.
+
+    The source payloads are never modified. Each payload is reconstructed into
+    a temporary working file and then extracted with Apple's ``aa`` utility.
+    """
+
+    PBZX_MAGIC = b"pbzx"
+    XZ_MAGIC = b"\xfd7zXZ\x00"
+    YAA1_MAGIC = b"YAA1"
+    HEADER_SIZE = 16
+    FIRST_HEADER_OFFSET = 12
+
     def __init__(self, output_path: Path, payload_dir: Path):
-        self.output_path = output_path
-        self.payload_dir = payload_dir
+        self.output_path = Path(output_path)
+        self.payload_dir = Path(payload_dir)
+        self.logger = logging.getLogger(__name__)
 
-        # PBZX constants
-        self.PBZX_Magic = b"pbzx"
-        self.block_size = 0x800000       # 8 MiB
+        self.extracted_dir = self.output_path
 
-    def read_u64_be(data, offset):
-        return struct.unpack_from(">Q", data, offset)[0]
+    @staticmethod
+    def read_u64_be(data: bytes, offset: int) -> int:
+        return int.from_bytes(data[offset:offset + 8], "big")
 
-
-    def find_xz(data, start):
+    def reconstruct_pbzx(self, payload: Path, reconstructed: Path) -> None:
         """
-        Find the next XZ stream beginning at or after start.
+        Reconstruct one PBZX payload into its YAA1 Apple Archive.
         """
-        pos = data.find(b"\xfd7zXZ\x00", start)
-
-        if pos == -1:
-            return None
-
-        return pos
-
-
-def decompress_xz_stream(data, start):
-    """
-    Decompress one XZ stream beginning at 'start'.
-
-    Returns:
-        decompressed data
-        number of bytes consumed from the XZ stream
-    """
-
-    decompressor = lzma.LZMADecompressor(format=lzma.FORMAT_XZ)
-
-    try:
-        output = decompressor.decompress(data[start:])
-
-    except lzma.LZMAError as e:
-        raise RuntimeError(
-            f"XZ decompression failed at offset {start}: {e}"
-        )
-
-    if not decompressor.eof:
-        raise RuntimeError(
-            f"XZ stream at offset {start} did not reach EOF"
-        )
-
-    consumed = len(data[start:]) - len(decompressor.unused_data)
-
-    return output, consumed
-
-
-    def reconstruct_pbzx(payload, output_file):
-        """
-        Reconstruct the YAA1 Apple Archive contained inside a PBZX payload.
-
-        The original payload is only read; it is never modified.
-        """
+        self.logger.info("Reconstructing %s", payload.name)
 
         data = payload.read_bytes()
+        if data[:4] != self.PBZX_MAGIC:
+            raise ValueError(f"{payload.name}: not a PBZX file")
 
-        if data[:4] != self.PBZX_magic:
-            raise RuntimeError(
-                f"{payload.name}: not a PBZX file "
-                f"(magic={data[:4]!r})"
-            )
+        if len(data) < self.FIRST_HEADER_OFFSET + self.HEADER_SIZE:
+            raise ValueError(f"{payload.name}: PBZX file is too small")
 
-        if len(data) < 28:
-            raise RuntimeError(f"{payload.name}: file is too small")
-
-        # PBZX header:
-        #
-        # 00: "pbzx"
-        # 04: flags / version
-        # 0c: first logical block size
-        # 14: first compressed-size field
-        #
-        # The first XZ stream starts at offset 28.
-
-        pos = 28
+        pos = self.FIRST_HEADER_OFFSET
         record = 0
         logical_total = 0
 
-        with output_file.open("wb") as out:
+        reconstructed.parent.mkdir(parents=True, exist_ok=True)
 
+        with reconstructed.open("wb") as out:
             while pos < len(data):
-
-                # We expect an XZ stream at the current record position.
-                if data[pos:pos + 6] == b"\xfd7zXZ\x00":
-
-                    decoded, consumed = decompress_xz_stream(data, pos)
-
-                    out.write(decoded)
-
-                    logical_total += len(decoded)
-
-                    xz_end = pos + consumed
-
-                    # PBZX records have a 16-byte metadata area between
-                    # the end of the XZ stream and the next XZ stream.
-                    next_xz = find_xz(data, xz_end)
-
-                    if next_xz is None:
-                        # No further XZ stream. The remaining bytes may
-                        # contain a raw PBZX record.
-                        pos = xz_end
-
-                        print(
-                            f"  {record}: XZ "
-                            f"uncomp={len(decoded):,} "
-                            f"stored={consumed:,} "
-                            f"offset={pos - consumed:,}"
-                        )
-
-                        record += 1
-                        break
-
-                    metadata_gap = next_xz - xz_end
-
-                    if metadata_gap >= 16:
-                        pos = next_xz
-
-                    else:
-                        raise RuntimeError(
-                            f"Unexpected PBZX metadata gap: "
-                            f"{metadata_gap} bytes"
-                        )
-
-                    print(
-                        f"  {record}: XZ "
-                        f"uncomp={len(decoded):,} "
-                        f"stored={consumed:,} "
-                        f"offset={pos - metadata_gap - consumed:,}"
+                if pos + self.HEADER_SIZE > len(data):
+                    raise ValueError(
+                        f"{payload.name}: truncated record header at {pos}"
                     )
 
-                    record += 1
-                    continue
+                logical_size = self.read_u64_be(data, pos)
+                stored_size = self.read_u64_be(data, pos + 8)
+                data_start = pos + self.HEADER_SIZE
+                data_end = data_start + stored_size
 
-                # ----------------------------------------------------
-                # RAW block
-                #
-                # Once the XZ records end, PBZX can contain raw blocks.
-                # The remaining record sizes are described by the
-                # 16-byte record metadata immediately before them.
-                # ----------------------------------------------------
+                if data_end > len(data):
+                    raise ValueError(
+                        f"{payload.name}: record {record} extends past EOF "
+                        f"(offset={data_start}, stored={stored_size}, "
+                        f"file={len(data)})"
+                    )
 
-                remaining = len(data) - pos
+                block = data[data_start:data_end]
 
-                if remaining <= 0:
-                    break
+                if stored_size == logical_size:
+                    # Raw PBZX block.
+                    decoded = block
+                    kind = "RAW"
+                else:
+                    if not block.startswith(self.XZ_MAGIC):
+                        raise ValueError(
+                            f"{payload.name}: record {record} declares a "
+                            f"compressed block but does not begin with XZ "
+                            f"magic at offset {data_start}"
+                        )
 
-                # At this point we need to locate the next PBZX raw
-                # record boundary. The raw data consists of 8 MiB
-                # logical blocks, with a final shorter block.
-                #
-                # The reconstructed data from our installer demonstrated
-                # that these blocks occur consecutively.
-                block_size = min(self.block_size, remaining)
+                    try:
+                        decoder = lzma.LZMADecompressor(format=lzma.FORMAT_XZ)
+                        decoded = decoder.decompress(block)
+                    except lzma.LZMAError as exc:
+                        raise ValueError(
+                            f"{payload.name}: XZ decompression failed in "
+                            f"record {record} at offset {data_start}: {exc}"
+                        ) from exc
 
-                chunk = data[pos:pos + block_size]
+                    if not decoder.eof:
+                        raise ValueError(
+                            f"{payload.name}: XZ stream in record {record} "
+                            "did not reach EOF"
+                        )
 
-                if not chunk:
-                    break
+                    if decoder.unused_data:
+                        raise ValueError(
+                            f"{payload.name}: XZ record {record} contains "
+                            f"{len(decoder.unused_data)} unexpected trailing bytes"
+                        )
 
-                out.write(chunk)
-                logical_total += len(chunk)
+                    kind = "XZ"
 
-                print(
-                    f"  {record}: RAW "
-                    f"uncomp={len(chunk):,} "
-                    f"stored={len(chunk):,} "
-                    f"offset={pos:,}"
+                if len(decoded) != logical_size:
+                    raise ValueError(
+                        f"{payload.name}: record {record} decoded to "
+                        f"{len(decoded):,} bytes, expected {logical_size:,}"
+                    )
+
+                out.write(decoded)
+                logical_total += len(decoded)
+
+                self.logger.info(
+                    "  %d: %s uncomp=%s stored=%s offset=%s",
+                    record,
+                    kind,
+                    f"{logical_size:,}",
+                    f"{stored_size:,}",
+                    f"{data_start:,}",
                 )
 
-                pos += len(chunk)
+                pos = data_end
                 record += 1
 
-        print()
-        print("PBZX reconstruction complete")
-        print(f"records: {record}")
-        print(f"logical bytes: {logical_total:,}")
-        print(f"output: {output_file}")
-        print()
+        if reconstructed.stat().st_size < 4:
+            raise ValueError(f"{payload.name}: reconstructed archive is empty")
 
-        return output_file
+        magic = reconstructed.read_bytes()[:4]
+        if magic != self.YAA1_MAGIC:
+            raise ValueError(
+                f"{payload.name}: reconstruction finished, but output does "
+                f"not begin with YAA1 (got {magic!r})"
+            )
 
+        self.logger.info(
+            "Reconstruction complete: %d records, %s bytes -> %s",
+            record,
+            f"{logical_total:,}",
+            reconstructed,
+        )
 
-    # ------------------------------------------------------------
-    # Apple Archive extraction
-    # ------------------------------------------------------------
-
-    def extract_apple_archive(archive, destination):
+    def extract_apple_archive(self, archive: Path, destination: Path) -> None:
+        """
+        Extract a reconstructed YAA1 archive using Apple's aa.
+        """
         destination.mkdir(parents=True, exist_ok=True)
 
-        command = [
-            "aa",
-            "extract",
-            "-i", str(archive),
-            "-d", str(destination),
-        ]
-
-        print("Running:")
-        print(" ".join(command))
-        print()
-
-        try:
-            subprocess.run(command, check=True)
-
-        except FileNotFoundError:
+        aa = shutil.which("aa")
+        if aa is None:
             raise RuntimeError(
-                "'aa' was not found in PATH. "
-                "Run 'which aa' to verify that Apple's aa tool is available."
+                "Apple's 'aa' utility was not found in PATH. "
+                "Run 'which aa' to verify it is available."
             )
 
-        except subprocess.CalledProcessError as e:
-            raise RuntimeError(
-                f"aa extraction failed with exit code {e.returncode}"
-            )
+        command = [aa, "extract", "-i", str(archive), "-d", str(destination)]
+        self.logger.info("Extracting Apple Archive: %s", archive.name)
+        subprocess.run(command, check=True)
 
-
-    # ------------------------------------------------------------
-    # Process one payload
-    # ------------------------------------------------------------
-
-    def process_payload(payload):
+    def process_payload(self, payload: Path) -> None:
+        """
+        Run the complete PBZX -> YAA1 -> filesystem pipeline.
+        """
         name = payload.name
+        # Extract directly into the selected output directory. Apple Archive
+        # paths such as System/Library/dyld/... are therefore rooted there,
+        # rather than underneath output/payload.001/.
+        destination = self.extracted_dir
 
-        print()
-        print("=" * 72)
-        print(f"PROCESSING: {name}")
-        print("=" * 72)
+        self.logger.info("=" * 72)
+        self.logger.info("Processing %s", name)
+        self.logger.info("=" * 72)
 
-        work = WORK_DIR / name
-        output = OUTPUT_DIR / name
+        # Keep the large reconstructed YAA1 archive out of the user-visible
+        # output tree. It is temporary and is removed after aa finishes.
+        with tempfile.TemporaryDirectory(prefix=f"{name}.", dir=self.output_path) as temp_dir:
+            reconstructed = Path(temp_dir) / f"{name}.reconstructed"
+            self.reconstruct_pbzx(payload, reconstructed)
+            self.extract_apple_archive(reconstructed, destination)
 
-        work.mkdir(parents=True, exist_ok=True)
-        output.mkdir(parents=True, exist_ok=True)
-
-        reconstructed = work / f"{name}.reconstructed"
-
-        print()
-        print("Step 1/2: reconstructing PBZX")
-        print(f"Input : {payload}")
-        print(f"Output: {reconstructed}")
-        print()
-
-        reconstruct_pbzx(payload, reconstructed)
-
-        print()
-        print("Step 2/2: extracting Apple Archive")
-        print(f"Input : {reconstructed}")
-        print(f"Output: {output}")
-        print()
-
-        self.extract_apple_archive(reconstructed, output)
-
-        print()
-        print(f"Finished: {name}")
-        print(f"Extracted to: {output}")
-
-        return True
-
-
-    # ------------------------------------------------------------
-    # Main
-    # ------------------------------------------------------------
-
-    def main():
-
-        OUTPUT_DIR.mkdir(exist_ok=True)
-        WORK_DIR.mkdir(exist_ok=True)
+    def run(self) -> None:
+        """
+        Process all unmodified payload files in payloadv2.
+        """
+        if not self.payload_dir.is_dir():
+            raise FileNotFoundError(f"Payload directory not found: {self.payload_dir}")
 
         payloads = sorted(
-            p for p in BASE_DIR.glob("payload.*")
+            p for p in self.payload_dir.iterdir()
             if p.is_file()
-            and ".reconstructed" not in p.name
+            and p.name.startswith("payload.")
         )
 
         if not payloads:
-            print("No payload.* files found.")
-            return 1
+            raise FileNotFoundError(
+                f"No payload.* files found in {self.payload_dir}"
+            )
 
-        print(f"Found {len(payloads)} payload file(s):")
-
-        for payload in payloads:
-            print(f"  {payload.name}")
-
-        print()
-        print(f"Working files : {WORK_DIR}")
-        print(f"Final output  : {OUTPUT_DIR}")
-        print()
-
-        failures = []
-
+        self.output_path.mkdir(parents=True, exist_ok=True)
+        failures: list[str] = []
         for payload in payloads:
             try:
-                process_payload(payload)
-
-            except Exception as e:
-                print()
-                print(f"ERROR processing {payload.name}:")
-                print(f"  {e}")
-                print()
-
+                self.process_payload(payload)
+            except Exception:
+                self.logger.exception("Failed to process %s", payload.name)
                 failures.append(payload.name)
 
-        print()
-        print("=" * 72)
-        print("ALL PAYLOADS PROCESSED")
-        print("=" * 72)
-
         if failures:
-            print()
-            print("Failed payloads:")
+            raise RuntimeError(
+                "The following payloads failed: " + ", ".join(failures)
+            )
 
-            for name in failures:
-                print(f"  {name}")
+        self.logger.info("All %d payloads processed successfully.", len(payloads))
 
-            return 1
 
-        print()
-        print("No failures.")
-
-        return 0
+# Backwards-compatible name used by an older commit of this project.
+extractAssets = ExtractAssets
