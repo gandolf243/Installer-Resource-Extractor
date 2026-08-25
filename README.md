@@ -11,37 +11,37 @@ please note: this project takes a while to execute.
 All installers Big Sur+ are supported, here is a list of tested ones. (if you have tested this program on a installer not checked bellow, please let me know [here]() 
 
 
-[x] Big Sur 11
+- [x] Big Sur 11
 
-[ ] Monterey 12
+- [ ] Monterey 12
 
-[ ] Ventura 13
+- [ ] Ventura 13
 
-[ ] Sonoma 14
+- [ ] Sonoma 14
 
-[ ] Sequoia 15
+- [ ] Sequoia 15
 
-[ ] Tahoe 26
+- [ ] Tahoe 26
 
-[ ] Golden Gate 27
+- [ ] Golden Gate 27
 
 ## Supported macOSes
 
 This project has curreently only been tested to run on macOS Sonoma. It most likely will work on way more. Please report [here]() if it works on a macOS not labeled/checked. This project **will** not work on macOS Sierra (10.12) or ealier, due to `YAA1` (one of the compression formats that apple uses) being introduced in macOS High Sierra (10.13).
 
-[ ] Big Sur 11
+- [ ] Big Sur 11
 
-[ ] Monterey 12
+- [ ] Monterey 12
 
-[ ] Ventura 13
+- [ ] Ventura 13
 
-[x] Sonoma 14
+- [x] Sonoma 14
 
-[ ] Sequoia 15
+- [ ] Sequoia 15
 
-[ ] Tahoe 26
+- [ ] Tahoe 26
 
-[ ] Golden Gate 27
+- [ ] Golden Gate 27
 
 ## Important Links
 * [FAQ](./FAQ.md)
