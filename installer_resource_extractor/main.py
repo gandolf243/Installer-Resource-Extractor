@@ -29,7 +29,9 @@ def startup():
         logger.info("Starting extraction process...")
         # Call the main function from the resources_extractor module
         from installer_resource_extractor.tools.parse_app import parse_app
+        from installer_resource_extractor.tools.extract_assets import extractAssets
         parse_app(Path(sys.argv[1]), Path(sys.argv[2]))
+        extractAssets(Path(sys.argv[1]), Path(sys.argv[2] / "Assets" / "AssetData" / "payloadv2"))
     elif Path(sys.argv[1]).exists() and not Path(sys.argv[2]).exists():
         logger.error(f"Output folder {sys.argv[2]} does not exist.")
         sys.exit(1)
