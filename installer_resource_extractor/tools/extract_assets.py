@@ -210,16 +210,30 @@ class ExtractAssets:
             "Extracting Apple Archive: %s",
             archive.name,
         )
-
         subprocess.run([
             aa,
             "extract",
             "-i",
             str(archive),
             "-d",
-            str(destination),
+            str(archive.parent),
         ])
 
+        archive.unlink()
+
+        #  just to check
+        if archive.exists():
+            subprocess.run([
+                    "/bin/rm",
+                    archive,
+            ])
+
+        subprocess.run([
+            "/bin/cp",
+            "-R",
+            f"{archive.parent}/.",
+            str(destination),
+        ], check=True)
     def process_payload(self, payload: Path) -> None:
         """
         Run the complete PBZX -> YAA1 -> filesystem pipeline.
