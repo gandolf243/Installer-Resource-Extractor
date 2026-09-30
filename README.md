@@ -6,6 +6,8 @@
 This project is designed to make getting macOS System files, for whatever reason (maybe for restoring support for older hardware) out without installing that version of macOS. This is for Big Sur+ installers, and is designed to run on macOS with the only dependency being the python logging framework. It can be installed using `pip3 install logging` or `python3 -m pip install logging`.
 please note: this project takes a while to execute.
 
+NOTE: There is a known issue ([#4](https://github.com/gandolf243/Installer-Resource-Extractor/issues/4)) where the installer will fail half way through the extraction, most items should be usable, but this has not been confirmed. If you think you know this fix for this issue, please let me know [here](https://github.com/gandolf243/Installer-Resource-Extractor/issues/4)
+
 ## Supported Installers
 
 All installers Big Sur+ are supported, here is a list of tested ones. (if you have tested this program on an installer not checked bellow, please let me know [here](https://github.com/gandolf243/Installer-Resource-Extractor/discussions/1))
@@ -21,7 +23,7 @@ All installers Big Sur+ are supported, here is a list of tested ones. (if you ha
 
 - [ ] Sequoia 15
 
-- [ ] Tahoe 26
+- [x] Tahoe 26
 
 - [ ] Golden Gate 27
 
