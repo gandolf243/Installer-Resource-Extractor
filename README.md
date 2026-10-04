@@ -1,6 +1,6 @@
 # Installer-Resource-Extractor
 
-![Installer Resource Extractor](.github/Installer_Resource_Extractor.png)
+<img height="800" alt="Installer Resource Extractor" src=".github/Installer_Resource_Extractor.png" />
 
 ## Description
 
