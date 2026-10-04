@@ -4,10 +4,10 @@
 
 ## Description
 
-This project is designed to make getting macOS System files, for whatever reason (maybe for restoring support for older hardware) out without installing that version of macOS. This is for Big Sur+ [...]
+This project is designed to make getting macOS System files, for whatever reason (maybe for restoring support for older hardware) out without installing that version of macOS. This is for Big Sur+
 please note: this project takes a while to execute.
 
-NOTE: There is a known issue ([#4](https://github.com/gandolf243/Installer-Resource-Extractor/issues/4)) where the installer will fail half way through the extraction, most items should be usable, [...]
+NOTE: There is a known issue ([#4](https://github.com/gandolf243/Installer-Resource-Extractor/issues/4)) where the installer will fail half way through the extraction, most items should be usable. 
 
 ## Supported Installers
 
