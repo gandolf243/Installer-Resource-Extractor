@@ -16,13 +16,13 @@ All installers Big Sur+ are supported, here is a list of tested ones. (if you ha
 
 - [x] Big Sur 11
 
-- [ ] Monterey 12
+- [x] Monterey 12
 
-- [ ] Ventura 13
+- [x] Ventura 13
 
-- [ ] Sonoma 14
+- [x] Sonoma 14
 
-- [ ] Sequoia 15
+- [x] Sequoia 15
 
 - [x] Tahoe 26
 
@@ -34,17 +34,17 @@ This project has currently only been tested to run on macOS Sonoma. It most like
 
 - [ ] Big Sur 11
 
-- [ ] Monterey 12
+- [x] Monterey 12
 
-- [ ] Ventura 13
+- [x] Ventura 13
 
 - [x] Sonoma 14
 
-- [ ] Sequoia 15
+- [x] Sequoia 15
 
-- [ ] Tahoe 26
+- [x] Tahoe 26
 
-- [ ] Golden Gate 27
+- [x] Golden Gate 27
 
 ## Important Links
 * [FAQ](./FAQ.md)
@@ -58,3 +58,6 @@ This project has currently only been tested to run on macOS Sonoma. It most like
     * [macOS](https://apple.com/macos)
     * PBZX
     * YAA1
+
+* [Matteo](https://github.com/Medelcartelinc)
+    * fix issue #4
