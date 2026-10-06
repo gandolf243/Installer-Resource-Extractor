@@ -229,13 +229,6 @@ class ExtractAssets:
                     archive,
             ])
 
-        subprocess.run([
-            "/bin/cp",
-            "-R",
-            f"{archive.parent}/.",
-            str(destination),
-        ])
-
     def process_payload(self, payload: Path) -> None:
         """
         Run the complete PBZX -> YAA1 -> filesystem pipeline.
