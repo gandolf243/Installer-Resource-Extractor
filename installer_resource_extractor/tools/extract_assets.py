@@ -214,9 +214,25 @@ class ExtractAssets:
         subprocess.run([
             aa,
             "extract",
-            "-i",
-            str(archive),
-            "-d",
+            "-i", str(archive),
+            "-d", str(destination),
+            "-exclude-field", "mod,flg,acl",
+            "-ignore-eperm",
+        ])
+
+        archive.unlink()
+
+        #  just to check
+        if archive.exists():
+            subprocess.run([
+                    "/bin/rm",
+                    archive,
+            ])
+
+        subprocess.run([
+            "/bin/cp",
+            "-R",
+            f"{archive.parent}/.",
             str(destination),
         ])
 
