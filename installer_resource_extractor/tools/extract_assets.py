@@ -59,7 +59,7 @@ class ExtractAssets:
         have stored_size == logical_size, so compression type is determined
         from the record's magic rather than from the two sizes.
         """
-        self.logger.info("Reconstructing %s", payload.name)
+        self.logger.debug("Reconstructing %s", payload.name)
 
         data = payload.read_bytes()
 
@@ -156,7 +156,7 @@ class ExtractAssets:
                 out.write(decoded)
                 logical_total += len(decoded)
 
-                self.logger.info(
+                self.logger.debug(
                     "  %d: %s uncomp=%s stored=%s offset=%s",
                     record,
                     kind,
@@ -182,7 +182,7 @@ class ExtractAssets:
                 f"not begin with YAA1 (got {magic!r})"
             )
 
-        self.logger.info(
+        self.logger.debug(
             "Reconstruction complete: %d records, %s bytes -> %s",
             record,
             f"{logical_total:,}",
@@ -206,7 +206,7 @@ class ExtractAssets:
                 "Run 'which aa' to verify it is available."
             )
 
-        self.logger.info(
+        self.logger.debug(
             "Extracting Apple Archive: %s",
             archive.name,
         )
@@ -243,7 +243,7 @@ class ExtractAssets:
         destination = self.extracted_dir
 
         self.logger.debug("=" * 72)
-        self.logger.debug("Processing %s", name)
+        self.logger.info("Processing %s", name)
         self.logger.debug("=" * 72)
 
         # Keep the large reconstructed YAA1 archive out of the user-visible
@@ -287,7 +287,7 @@ class ExtractAssets:
                 f"No plain payload.* files found in {self.payload_dir}"
             )
 
-        self.logger.debug(
+        self.logger.info(
             "Found %d payload files.",
             len(payloads),
         )

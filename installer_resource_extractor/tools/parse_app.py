@@ -38,12 +38,12 @@ class parse_app:
         self.extract_zip()
         
     def extract_zip(self):
-        self.logger.debug("Mounting SharedSupport.dmg...")
+        self.logger.info("Mounting SharedSupport.dmg...")
         subprocess.run(["/usr/bin/hdiutil", "attach", "-noverify", str(self.app_path / Path("Contents/SharedSupport/SharedSupport.dmg"))], check=True)
         assets_zip = Path(subprocess.run(["/usr/bin/find", "/Volumes/Shared Support/com_apple_MobileAsset_MacSoftwareUpdate", "-type", "f", "-name", "*.zip"], capture_output=True, text=True).stdout.strip())
-        self.logger.debug(f"Unziping macOS installer assets from {assets_zip} ...")
+        self.logger.info(f"Unziping macOS installer assets from {assets_zip} ...")
         subprocess.run(["/usr/bin/unzip", str(assets_zip), "-d", str(self.output_path / "Assets")], check=True)
-        self.logger.debug("Unmounting SharedSupport.dmg...")
+        self.logger.info("Unmounting SharedSupport.dmg...")
         subprocess.run(["/usr/bin/hdiutil", "detach", "/Volumes/Shared Support"], check=True)
 
     def remove_extra(self):
